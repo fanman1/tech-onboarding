@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { apiUrl, Service } from "@hex-labs/core";
+import { apiUrl, Service, useAuth } from "@hex-labs/core";
 import { SimpleGrid, Text } from "@chakra-ui/react";
 import axios from "axios";
 import UserCard from "./UserCard";
@@ -13,7 +13,8 @@ const UserData: React.FC = () => {
   // element being the function to update the state.
 
   const [users, setUsers] = useState<any[]>([]);
-
+  const [loading, setLoading] = useState(true);
+  const accessToken = 'eyJhbGciOiJSUzI1NiIsImtpZCI6ImI4Y2FjOTViNGE1YWNkZTBiOTY1NzJkZWU4YzhjOTVlZWU0OGNjY2QiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiQWFyb24gRmFuIiwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hL0FDZzhvY0xWbjdwX0RISTdFal9TYVdPMDgtUktleHhqdkFTd2NvSzFYc0ZsUXVJeGNDZVR6bW9vPXM5Ni1jIiwiaXNzIjoiaHR0cHM6Ly9zZWN1cmV0b2tlbi5nb29nbGUuY29tL2hleGxhYnMtY2xvdWQiLCJhdWQiOiJoZXhsYWJzLWNsb3VkIiwiYXV0aF90aW1lIjoxNzMxNDMwNjU5LCJ1c2VyX2lkIjoiS0Q4bGd6b094NmJrTlJ1RGRuTTZjWlhpZzljMiIsInN1YiI6IktEOGxnem9PeDZia05SdURkbk02Y1pYaWc5YzIiLCJpYXQiOjE3MzE0MzA2NTksImV4cCI6MTczMTQzNDI1OSwiZW1haWwiOiJhaWx1bi5hYXJvbi5mYW5AZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZpcmViYXNlIjp7ImlkZW50aXRpZXMiOnsiZ29vZ2xlLmNvbSI6WyIxMTE2MDA4ODIzMTc5OTEyOTQyNjkiXSwiZW1haWwiOlsiYWlsdW4uYWFyb24uZmFuQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6ImN1c3RvbSJ9fQ.T80Du5cyvSQ5ZxQ6-kYhLcR5zivIs52MUDbRcwYKR5vbrYdGNv9RYHG2cwW38gBX0NR_Fq7FBVi8bK4JwvljLi2FJJquQMo-00co4gTA9mwMNBiNL7Jl526dzAK7oJod19kXwMvw8Xx5DTC9hTuAmNlgYmnIJ5xhL65QdlkKohY2EORL7BvLpEP6NFWr7r4v4_YKSCWin5R1rWy_5KB6m0nNnUlKhDOJD02oiHeQlE53Grbnc1qM7he3RlmxFXIABqsqdMCcQQrjAJqSwVGeULsb1oDTawM32GTkrMLcilYPxlqTEEusJ3R_hEBOCMkL-NjFRc3vF-z6Nk6spNu5wg'
   // The useEffect hook basicaly runs the code inside of it when the component
   // mounts. This is useful for making API calls and other things that should
   // only happen once when the component is loaded.
@@ -26,24 +27,32 @@ const UserData: React.FC = () => {
     // finished.
 
     const getUsers = async () => {
-
-      // TODO: Use the apiUrl() function to make a request to the /users endpoint of our USERS service. The first argument is the URL
-      // of the request, which is created for the hexlabs api through our custom function apiUrl(), which builds the request URL based on
-      // the Service enum and the following specific endpoint URL.
-
-      // TODO: Also explore some of the other ways to configure the api call such as filtering and pagination.
-      // Try to filter all the users with phone numbers starting with 470 or increase the amount of users returned from the default 50 (don't go above 100).
-
-      // Postman will be your best friend here, because it's better to test out the API calls in Postman before implementing them here.
-
+      setLoading(true);
       // this is the endpoint you want to hit, but don't just hit it directly using axios, use the apiUrl() function to make the request
       const URL = 'https://users.api.hexlabs.org/users/hexlabs';
+      try {
+        const url = apiUrl(Service.USERS, '/users/hexlabs');
+        
+        const response = await axios.get(url, {
+          params: {
+            limit: 100,
+          },
+          // headers: {
+          //   Authorization: `Bearer ${accessToken}`,
+          // },
+        });
 
-      // uncomment the line below to test if you have successfully made the API call and retrieved the data. The below line takes
-      // the raw request response and extracts the actual data that we need from it.
-      // setUsers(data?.data?.profiles);
+        const profiles = response?.data?.data?.profiles || [];
+        setUsers(profiles);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        setUsers([]);
+      } finally {
+        setLoading(false);
+      }
     };
-    document.title = "Hexlabs Users"
+
+    document.title = "Hexlabs Users";
     getUsers();
   }, []);
   // ^^ The empty array at the end of the useEffect hook tells React that the
@@ -55,22 +64,31 @@ const UserData: React.FC = () => {
   // TODO: Create a function that sorts the users array based on the first name of the users. Then, create a button that
   // calls this function and sorts the users alphabetically by first name. You can use the built in sort() function to do this.
 
+  const sortUsersByFirstName = () => {
+    if (!users) return;
+    const sortedUsers = [...users].sort((a, b) => 
+      (a.firstName || '').localeCompare(b.firstName || '')
+    );
+    setUsers(sortedUsers);
+  };
 
   return (
     <>
       <Text fontSize="4xl">Hexlabs Users</Text>
       <Text fontSize="2xl">This is an example of a page that makes an API call to the Hexlabs API to get a list of users.</Text>
 
+      <button onClick={sortUsersByFirstName}>Sort by First Name</button>
 
       <SimpleGrid columns={[2, 3, 5]} spacing={6} padding={10}>
-
-        {/* Here we are mapping every entry in our users array to a unique UserCard component, each with the unique respective
-        data of each unique user in our array. This is a really important concept that we use a lot so be sure to familiarize
-        yourself with the syntax - compartmentalizing code makes your work so much more readable. */}
-        { users.map((user) => (
-          <UserCard user={user} />
-        ))}
-
+        {loading ? (
+          <Text>Loading users...</Text>
+        ) : users?.length > 0 ? (
+          users.map((user) => (
+            <UserCard key={user.id} user={user} />
+          ))
+        ) : (
+          <Text>No users found</Text>
+        )}
       </SimpleGrid>
     </>
   );

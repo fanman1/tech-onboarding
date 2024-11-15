@@ -3,9 +3,22 @@ import {
   Flex,
   HStack,
   Text,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure,
+  VStack
 } from "@chakra-ui/react";
-import React from "react";
-
+import React, { useState } from "react";
+import { apiUrl, Service } from "@hex-labs/core";
+import axios from "axios";
+type Hexathon = {
+  id: string;
+  name: string;
+};
 type Props = {
   user: any;
 };
@@ -24,8 +37,45 @@ type Props = {
 // and the /hexathons endpoint of the hexathons service to get a list of all the hexathons.
 
 const UserCard: React.FC<Props> = (props: Props) => {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [hexathons, setHexathons] = useState<Hexathon[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchUserHexathons = async () => {
+    setLoading(true);
+    try {
+      // get the user's applications
+      const applicationsUrl = apiUrl(Service.REGISTRATION, '/applications');
+      const applicationsResponse = await axios.get(applicationsUrl, {
+        params: {
+          userId: props.user.userId,
+        },
+      });
+
+      // getting hexathon IDs from applications
+      const hexathonIds = applicationsResponse.data.data.applications.map(
+        (app: any) => app.hexathonId
+      );
+
+      // Then, get hexathon details for each application
+      const hexathonsUrl = apiUrl(Service.HEXATHONS, '/hexathons');
+      const hexathonsResponse = await axios.get(hexathonsUrl);
+      
+      // Filter hexathons to only include ones user applied to
+      const userHexathons = hexathonsResponse.data.data.hexathons.filter(
+        (hex: Hexathon) => hexathonIds.includes(hex.id)
+      );
+
+      setHexathons(userHexathons);
+    } catch (error) {
+      console.error('Error fetching hexathons:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
+    <>
     <Box
     borderWidth="1px"
     rounded="lg"
@@ -48,6 +98,23 @@ const UserCard: React.FC<Props> = (props: Props) => {
         </Text>
       </Flex>
     </Box>
+
+    <Modal isOpen={isOpen} onClose={onClose}>
+    <ModalOverlay />
+    <ModalContent>
+      <ModalHeader>{`${props.user.name.first} ${props.user.name.last}`}</ModalHeader>
+      <ModalCloseButton />
+      <ModalBody>
+        <VStack align="start" spacing={3} pb={4}>
+          <Text><strong>Name:</strong> {`${props.user.name.first} ${props.user.name.last}`}</Text>
+          <Text><strong>Email:</strong> {props.user.email}</Text>
+          <Text><strong>Phone Number:</strong> {props.user.phoneNumber || 'N/A'}</Text>
+          <Text><strong>User ID:</strong> {props.user.userId}</Text>
+        </VStack>
+      </ModalBody>
+    </ModalContent>
+    </Modal>
+    </>
   );
 };
 
